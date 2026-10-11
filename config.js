@@ -19,8 +19,10 @@ window.SHOP = {
 
   creator: {
     name: "sdhiryan",
+    link: "https://form-link-for-new-shops.vercel.app/",   // "Created by" opens this sign-up form
+    cta: "Get a page like this",
     phone: "918533053912",
-    tagline: "Want a page like this? Tap to chat",
+    tagline: "Want a page like this for your shop?",
     message: "Hi sdhiryan! I saw your NFC page at {shop} and I'd like one for my shop."
   },
 

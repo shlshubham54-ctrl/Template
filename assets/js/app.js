@@ -58,14 +58,17 @@
     $("#shop-name").textContent = S.name;
     $("#shop-tagline").textContent = S.tagline || "";
 
+    // "Created by" links to the sign-up form (it tells the form which shop page sent the visitor).
+    // Falls back to a WhatsApp chat if no form link is set.
     const C = S.creator || {};
-    const waLink = C.phone ? `https://wa.me/${C.phone}?text=${encodeURIComponent((C.message || "").replace("{shop}", S.name))}` : "";
+    const formLink = C.link ? `${C.link}${C.link.includes("?") ? "&" : "?"}ref=${encodeURIComponent(S.name)}` : "";
+    const creatorLink = formLink || (C.phone ? `https://wa.me/${C.phone}?text=${encodeURIComponent((C.message || "").replace("{shop}", S.name))}` : "");
     const pill = $("#platform");
     if (C.name && C.showPill !== false) {
-      pill.href = waLink || "#";
-      pill.innerHTML = `<span class="pp-mark wa">${I.whatsapp}</span>
+      pill.href = creatorLink || "#";
+      pill.innerHTML = `<span class="pp-mark">${formLink ? I.tap : I.whatsapp}</span>
         <span><small>Created by</small><strong>${esc(C.name)}</strong><span class="pp-sub">${esc(C.tagline || "")}</span></span>
-        <span class="pp-chat">Chat</span>`;
+        <span class="pp-chat">${formLink ? "Get yours" : "Chat"}</span>`;
     } else pill.remove();
 
     let i = 0;
@@ -103,9 +106,8 @@
 
     const pw = $("#powered");
     if (C.name) {
-      const num = C.phone ? `+${C.phone.slice(0, 2)} ${C.phone.slice(2, 7)} ${C.phone.slice(7)}` : "";
       pw.innerHTML = `<span class="made">Created by <b>${esc(C.name)}</b></span>
-        ${waLink ? `<a class="wa-btn" href="${esc(waLink)}" rel="noopener">${I.whatsapp}<span>${esc(num)}</span></a>` : ""}`;
+        ${creatorLink ? `<a class="wa-btn" href="${esc(creatorLink)}" rel="noopener">${formLink ? I.tap : I.whatsapp}<span>${esc(C.cta || "Get a page like this")}</span></a>` : ""}`;
       pw.classList.add("reveal");
       pw.style.setProperty("--i", i++);
     }
