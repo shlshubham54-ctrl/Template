@@ -47,7 +47,7 @@
     if (S.theme?.accent2) root.style.setProperty("--accent2", S.theme.accent2);
 
     const cover = $("#cover");
-    if (S.cover) cover.style.backgroundImage = `url("${S.cover}")`;
+    if (S.cover) { cover.style.backgroundImage = `url("${S.cover}")`; $(".hero").classList.add("photo"); }
     else cover.classList.add("gradient");
     if (S.coverLogo) {                                  // brand lockup centred on the hero
       const img = Object.assign(new Image(), { className: "cover-logo", src: S.coverLogo, alt: S.name });
@@ -86,7 +86,7 @@
       li.className = "reveal";
       li.style.setProperty("--i", i++);
       li.innerHTML = href
-        ? `<a class="row" href="${esc(href)}" target="_blank" rel="noopener">${inner}</a>`
+        ? `<a class="row" href="${esc(href)}" rel="noopener">${inner}</a>`
         : `<button class="row" type="button">${inner}</button>`;
       const row = li.firstElementChild;
       row.addEventListener("click", () => { tick(); t.run?.(a); });
@@ -97,7 +97,7 @@
     const SOC = { instagram: "instagram", youtube: "youtube", facebook: "facebook", x: "x", whatsapp: "whatsappSocial" };
     soc.innerHTML = Object.entries(S.socials || {})
       .filter(([k, v]) => v && SOC[k])
-      .map(([k, v]) => `<a href="${esc(v)}" target="_blank" rel="noopener" aria-label="${k}">${I[SOC[k]]}</a>`).join("");
+      .map(([k, v]) => `<a href="${esc(v)}" rel="noopener" aria-label="${k}">${I[SOC[k]]}</a>`).join("");
     soc.classList.add("reveal");
     soc.style.setProperty("--i", i++);
 
@@ -105,7 +105,7 @@
     if (C.name) {
       const num = C.phone ? `+${C.phone.slice(0, 2)} ${C.phone.slice(2, 7)} ${C.phone.slice(7)}` : "";
       pw.innerHTML = `<span class="made">Created by <b>${esc(C.name)}</b></span>
-        ${waLink ? `<a class="wa-btn" href="${esc(waLink)}" target="_blank" rel="noopener">${I.whatsapp}<span>${esc(num)}</span></a>` : ""}`;
+        ${waLink ? `<a class="wa-btn" href="${esc(waLink)}" rel="noopener">${I.whatsapp}<span>${esc(num)}</span></a>` : ""}`;
       pw.classList.add("reveal");
       pw.style.setProperty("--i", i++);
     }
@@ -118,19 +118,27 @@
     return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.62;
   }
 
-  /* Parallax cover + hide creator pill on scroll */
-  let raf = 0;
-  addEventListener("scroll", () => {
-    if (raf) return;
-    raf = requestAnimationFrame(() => {
-      raf = 0;
-      const y = scrollY;
-      const hero = $(".hero");
-      hero.style.setProperty("--sy", Math.max(0, y));
-      hero.style.setProperty("--pull", Math.max(0, -y));
-      $("#platform")?.classList.toggle("hide", y > 30);
-    });
-  }, { passive: true });
+  /* Parallax cover + hide creator pill on scroll.
+     Transforms are written straight onto the two layers (no CSS variables), and only while the hero is visible. */
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let raf = 0, pillHidden = false;
+  function onScroll() {
+    raf = 0;
+    const y = scrollY;
+    if (!reduceMotion && y < 700) {
+      const coverEl = $("#cover"), logoEl = $(".cover-logo");
+      coverEl.style.transform = y >= 0
+        ? `translate3d(0, ${(y * 0.35).toFixed(1)}px, 0)`
+        : `translate3d(0, ${y.toFixed(1)}px, 0) scale(${(1 - y * 0.002).toFixed(4)})`;   // iOS pull-down stretch
+      if (logoEl) {
+        logoEl.style.transform = `translate3d(-50%, calc(-50% + ${(Math.max(0, y) * 0.18).toFixed(1)}px), 0)`;
+        logoEl.style.opacity = Math.max(0, 1 - Math.max(0, y) / 240).toFixed(3);
+      }
+    }
+    const hide = y > 30;
+    if (hide !== pillHidden) { pillHidden = hide; $("#platform")?.classList.toggle("hide", hide); }
+  }
+  addEventListener("scroll", () => { if (!raf) raf = requestAnimationFrame(onScroll); }, { passive: true });
 
   /* ==========================================================
      Modal system — sheets, pages and alerts share one stack.
@@ -176,6 +184,10 @@
   }
 
   function dismiss() { if (modals.length) history.back(); }
+  // If the page was reloaded while a sheet's history entry was current, step back to the base entry
+  if (history.state?.modal) history.go(-history.state.modal);
+  // Restored from the back/forward cache: re-sync page chrome with whatever is open
+  addEventListener("pageshow", (e) => { if (e.persisted) chrome(); });
   addEventListener("popstate", () => modals.pop()?.());
   scrim.addEventListener("click", dismiss);
   addEventListener("keydown", (e) => { if (e.key === "Escape") dismiss(); });
@@ -285,7 +297,7 @@
           </div>
           <div class="rv-sugg" id="rv-sugg"></div>
           <textarea class="field" id="rv-text" placeholder="Or write your own…" maxlength="1500" style="min-height:110px"></textarea>
-          <a class="btn accent" id="rv-go" href="${esc(link)}" target="_blank" rel="noopener">${I.google}<span>Copy &amp; post on Google</span></a>
+          <a class="btn accent" id="rv-go" href="${esc(link)}" rel="noopener">${I.google}<span>Copy &amp; post on Google</span></a>
           <p class="footnote">We copy your review for you. On Google, tap the stars, then press and hold the text box and choose <b>Paste</b>.</p>
         </div></div>`
     });
@@ -340,12 +352,14 @@
       $$(".sugg", list).forEach((x) => x.classList.toggle("picked", x === b));
       text.value = b.textContent;
     });
-    // Copy synchronously inside the tap so the browser still allows opening Google afterwards
-    $("#rv-go", el).addEventListener("click", () => {
+    // Copy, then open Google in this tab — the phone's Back button brings the guest straight back here
+    $("#rv-go", el).addEventListener("click", (e) => {
       const t = text.value.trim();
       if (!t) return;
+      e.preventDefault();
       copy(t);
       toast("Review copied — paste it on Google");
+      setTimeout(() => { location.href = link; }, 650);
     });
   }
 
@@ -412,6 +426,7 @@
         <div class="searchbar"><label>${I.search}<input type="search" id="m-q" placeholder="Search menu" enterkeyhint="search" autocomplete="off"></label></div>`
     });
 
+    el.classList.add("plain");
     const body = $("#m-body", el), chips = $("#m-chips", el), thumb = $(".seg-thumb", el), q = $("#m-q", el);
     chips.style.position = "relative";
     if (thumb) thumb.style.width = `calc((100% - 4px) / ${cats.length})`;
@@ -631,7 +646,7 @@
           const res = await fetch(F.endpoint, { method: "POST", body: fd, headers: { Accept: "application/json" } });
           if (!res.ok) throw new Error(res.status);
         } else if (F.whatsapp) {
-          window.open(`https://wa.me/${encodeURIComponent(F.whatsapp)}?text=${encodeURIComponent(`Feedback for ${S.name}:\n\n${msg}`)}`, "_blank", "noopener");
+          setTimeout(() => { location.href = `https://wa.me/${encodeURIComponent(F.whatsapp)}?text=${encodeURIComponent(`Feedback for ${S.name}:\n\n${msg}`)}`; }, 600);
         } else {
           console.warn("[feedback] No endpoint configured — message not sent:", msg);
         }

@@ -5,9 +5,11 @@ window.SHOP = {
   slug: "roms-pizza-khekra",
   name: "Roms Pizza",
   tagline: "Happiness is a slice of pizza",
-  logo: "images/logo.svg",
-  cover: "",                          // minimal navy brand gradient
-  coverLogo: "images/logo-full.svg",
+  logo: "images/logo.png",              // cut from the Roms box print and cleaned up
+  // Veg pizza on a navy table — Pexels photo #5640015 (free licence: pexels.com/license).
+  // Swap for the shop's own food photo when available (put it in images/).
+  cover: "https://images.pexels.com/photos/5640015/pexels-photo-5640015.jpeg?auto=compress&cs=tinysrgb&w=1400",
+  coverLogo: "",
 
   theme: {
     accent: "#214486",                // Roms navy blue (box + menu card)
